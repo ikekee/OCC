@@ -2,18 +2,21 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from itertools import combinations
+from datetime import datetime
+import time
 
 
 class OCC:
     def __init__(self, max_clusters: int):
         self.max_clusters = max_clusters
 
+    def _indexToExample(self):
+        pass
+
     def _delete_rows(self, delete_array, delete_index):
         pair = delete_array[delete_index][0:2]
-        delete_array = delete_array[delete_array[:, 0] != pair[0]]
-        delete_array = delete_array[delete_array[:, 0] != pair[1]]
-        delete_array = delete_array[delete_array[:, 1] != pair[0]]
-        delete_array = delete_array[delete_array[:, 1] != pair[1]]
+        delete_array = delete_array[delete_array[:, 0] != (pair[0] and pair[1])]
+        delete_array = delete_array[delete_array[:, 1] != (pair[0] and pair[1])]
         return delete_array
 
     def _count_clusters(self, A, B, row_cluster_n, column_cluster_n):
@@ -29,12 +32,22 @@ class OCC:
             print(f'Кластер {i}: совпало {res[i][i]}/{res[i].sum()} точек.')
         print('\n')
 
-    def train(self, data):
-        numpy_data = data
+    def _validate_length(self, data):
+        if len(data) % 2 == 0:
+            pass
+        else:
+            raise ValueError(
+                "Length of input array is assumed to be an even number, "
+                "otherwise some of the objects are regarded twice."
+            )
+
+    def fit(self, data):
+        self._validate_length(data)
         if isinstance(data, pd.DataFrame):
             numpy_data = np.array(data)
+        else:
+            numpy_data = data
         print("Расчет расстояния между примерами...\n")
-        # Считаем расстояния между примерами
         indexes = np.array(list(combinations(range(len(data)), 2)))
         indexes_list_length = int(len(data) * (len(data) - 1) / 2)  # Количество комбинаций
         distances_array = np.zeros((indexes_list_length, 3))
@@ -43,18 +56,19 @@ class OCC:
         print(distances_array)
         print("Разделение на массивы А и В...\n")
         # Разделяем на массивы А и В
-        A = np.array([], dtype=int)
-        B = np.array([], dtype=int)
-        A_index = np.array([], dtype=int)
-        B_index = np.array([], dtype=int)
-        dipoles = np.array([])
-        while len(array) != 0:
-            min_index = np.argmin(array, axis=0)[2]
-            A_index = np.append(A_index, array[min_index][0])
-            B_index = np.append(B_index, array[min_index][1])
-            array = self._delete_rows(array, min_index)
-            print(len(array))
+        A_examples = np.array([], dtype=int)
+        B_examples = np.array([], dtype=int)
+        A_indexes = np.array([], dtype=int)
+        B_indexes = np.array([], dtype=int)
+        start_time = datetime.now()
+        while len(distances_array) != 0:
+            min_index = np.argmin(distances_array, axis=0)[2]
+            A_indexes = np.append(A_indexes, distances_array[min_index][0])
+            B_indexes = np.append(B_indexes, distances_array[min_index][1])
+            distances_array = self._delete_rows(distances_array, min_index)
 
+            print(len(distances_array))
+        print(datetime.now() - start_time)
         A_index = np.int64(A_index)
         B_index = np.int64(B_index)
 
